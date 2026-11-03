@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Small Question</title>
+<meta name="description" content="Someone has a question for you.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐈‍⬛</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;1,9..144,400&family=DM+Sans:wght@400;500;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --bg: #14122b;
+    --bg-2: #1e1a3d;
+    --card: #fdf6ec;
+    --ink: #2a2140;
+    --ink-soft: #6b5f80;
+    --gold: #f2b84b;
+    --rose: #ff6f91;
+    --mint: #7fe0c5;
+    --cream: #fdf6ec;
+    --radius: 22px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(1200px 600px at 80% -10%, #3b2a6b 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, #4a1f45 0%, transparent 60%),
+      var(--bg);
+    color: var(--cream);
+    font-family: "DM Sans", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+  /* floating notes + paws in the background */
+  .floaty {
+    position: fixed; bottom: -40px; font-size: 22px; opacity: .25;
+    animation: rise linear infinite; pointer-events: none; z-index: 0;
+  }
+  @keyframes rise {
+    to { transform: translateY(-115vh) rotate(25deg); }
+  }
+
+  main {
+    position: relative; z-index: 1;
+    max-width: 560px; margin: 0 auto; padding: 48px 16px 64px;
+    min-height: 100dvh; display: flex; flex-direction: column; justify-content: center;
+  }
+  .scene { display: none; animation: fadeUp .6s ease both; }
+  .scene.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  h1, h2 { font-family: "Fraunces", serif; font-weight: 700; line-height: 1.1; margin: 0 0 12px; }
+  h1 { font-size: clamp(2.2rem, 8vw, 3.2rem); }
+  h2 { font-size: clamp(1.6rem, 6vw, 2.1rem); }
+  p { line-height: 1.55; }
+  .script { font-family: "Caveat", cursive; color: var(--gold); font-size: 1.6rem; }
+  .muted { color: #c9bfe0; }
+  .center { text-align: center; }
+
+  .kitty {
+    font-size: 1.5rem; letter-spacing: .05em; color: var(--gold);
+    display: inline-block; animation: bob 2.4s ease-in-out infinite;
+  }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+
+  .btn {
+    appearance: none; border: 0; cursor: pointer;
+    font: 700 1.05rem "DM Sans", sans-serif;
+    padding: 14px 26px; border-radius: 999px;
+    background: var(--gold); color: var(--ink);
+    box-shadow: 0 6px 0 #b9832a;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #b9832a; }
+  .btn.rose { background: var(--rose); box-shadow: 0 6px 0 #c4486a; color: #fff; }
+  .btn.ghost { background: transparent; color: var(--cream); box-shadow: inset 0 0 0 2px #ffffff40; }
+  .btn-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 28px; position: relative; min-height: 60px; }
+  #noBtn { transition: transform .25s ease; }
+
+  /* envelopes */
+  .envelopes { display: grid; gap: 18px; margin-top: 24px; }
+  .env {
+    background: var(--card); color: var(--ink);
+    border-radius: var(--radius); padding: 22px;
+    box-shadow: 0 18px 40px #00000055;
+    position: relative; overflow: hidden;
+  }
+  .env::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 6px;
+    background: repeating-linear-gradient(90deg, var(--rose) 0 18px, var(--cream) 18px 26px, #5b7cfa 26px 44px, var(--cream) 44px 52px);
+  }
+  .env-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .env-date { font-family: "Fraunces", serif; font-weight: 700; font-size: 1.35rem; }
+  .env-tag { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+  .seal {
+    width: 52px; height: 52px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 35% 35%, #ff8aa6, #c4486a);
+    display: grid; place-items: center; font-size: 1.4rem;
+    box-shadow: inset 0 -3px 0 #00000030;
+  }
+  .env.open .seal { background: radial-gradient(circle at 35% 35%, #a6f5df, #3fb393); }
+
+  .lock { margin-top: 16px; padding-top: 16px; border-top: 2px dashed #e4d7c4; }
+  .lock p { margin: 0 0 12px; color: var(--ink-soft); }
+  .reveal { display: none; margin-top: 16px; padding-top: 16px; border-top: 2px dashed #e4d7c4; animation: fadeUp .6s ease both; }
+  .env.open .lock { display: none; }
+  .env.open .reveal { display: block; }
+
+  /* quiz */
+  .quiz { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-family: "Fraunces", serif; font-size: 1.2rem; }
+  .quiz input {
+    font: 500 1.05rem "DM Sans", sans-serif; padding: 10px 14px; border-radius: 12px;
+    border: 2px solid #e4d7c4; width: 9em; color: var(--ink); background: #fff;
+  }
+  .quiz input:focus { outline: none; border-color: var(--rose); }
+  .quiz .btn { padding: 10px 18px; font-size: .95rem; }
+  .hint { font-size: .9rem; color: var(--rose); min-height: 1.4em; margin-top: 8px; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+  /* itinerary */
+  .stop { display: flex; gap: 12px; margin: 12px 0; }
+  .stop .ico { font-size: 1.5rem; flex: none; width: 2rem; text-align: center; }
+  .stop b { display: block; }
+  .stop small { color: var(--ink-soft); }
+  .stop a { color: #c4486a; font-weight: 700; }
+  .note { font-family: "Caveat", cursive; font-size: 1.35rem; color: #c4486a; margin: 14px 0 6px; }
+  .cal { margin-top: 10px; font-size: .9rem; padding: 10px 18px; }
+
+  .finale { margin-top: 28px; text-align: center; display: none; }
+  .finale.show { display: block; animation: fadeUp .6s ease both; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- 1. Hello -->
+  <section class="scene active" id="s-hello">
+    <div class="kitty">ฅ^•ﻌ•^ฅ</div>
+    <h1>Hi <span data-name></span>.</h1>
+    <p class="muted">I made you a tiny website. It has one question in it, and a couple of secrets.</p>
+    <p class="script">(no cats were harmed in the making of it)</p>
+    <div class="btn-row" style="justify-content:flex-start">
+      <button class="btn" data-go="s-ask">Okay, I'm curious →</button>
+    </div>
+  </section>
+
+  <!-- 2. The question -->
+  <section class="scene center" id="s-ask">
+    <div class="kitty">/ᐠ｡ꞈ｡ᐟ\</div>
+    <h1>Will you go out with me?</h1>
+    <p class="muted">Twice, actually. I have plans.</p>
+    <div class="btn-row" id="askRow">
+      <button class="btn rose" id="yesBtn">Yes 💃</button>
+      <button class="btn ghost" id="noBtn">No</button>
+    </div>
+    <p class="hint" id="noMsg" style="color:#c9bfe0"></p>
+  </section>
+
+  <!-- 2b. Graceful exit -->
+  <section class="scene center" id="s-no">
+    <div class="kitty">ฅ^ ˘ﻌ˘ ^ฅ</div>
+    <h2>Totally fair.</h2>
+    <p class="muted">Thanks for clicking through anyway. You're great, and this cat respects your decision.</p>
+    <div class="btn-row"><button class="btn ghost" data-go="s-ask">Wait, go back</button></div>
+  </section>
+
+  <!-- 3. Envelopes -->
+  <section class="scene" id="s-dates">
+    <p class="script">You said yes!!</p>
+    <h2>Two nights. Two sealed envelopes.</h2>
+    <p class="muted">Each one is locked. You'll have to earn the details.</p>
+
+    <div class="envelopes">
+      <!-- Wednesday -->
+      <article class="env" id="envWed">
+        <div class="env-head">
+          <div>
+            <div class="env-tag">Envelope No. 1</div>
+            <div class="env-date">Wednesday, Nov 11</div>
+          </div>
+          <div class="seal" aria-hidden="true">🔒</div>
+        </div>
+
+        <div class="lock">
+          <p><b>To open:</b> who's the artist behind your favourite jazz album, the one you're hunting for on vinyl? 🎷</p>
+          <form class="quiz" id="quizWed" autocomplete="off">
+            <input placeholder="Artist name" aria-label="Artist name" style="width:12em">
+            <button class="btn rose" type="submit">Unlock</button>
+          </form>
+          <div class="hint"></div>
+        </div>
+
+        <div class="reveal">
+          <div class="stop">
+            <div class="ico">🍻</div>
+            <div>
+              <b>Drinks on 17th</b>
+              <span data-wed-venue></span><br>
+              <small data-wed-detail></small>
+            </div>
+          </div>
+          <div class="stop">
+            <div class="ico">🕖</div>
+            <div><b data-wed-time></b></div>
+          </div>
+          <p class="note">Low-key. Cozy. A warm-up act for Friday.</p>
+          <button class="btn ghost cal" style="color:var(--ink);box-shadow:inset 0 0 0 2px #d8c8b0" data-ics="wed">📅 Add to calendar</button>
+        </div>
+      </article>
+
+      <!-- Friday -->
+      <article class="env" id="envFri">
+        <div class="env-head">
+          <div>
+            <div class="env-tag">Envelope No. 2</div>
+            <div class="env-date">Friday, Nov 13</div>
+          </div>
+          <div class="seal" aria-hidden="true">🔒</div>
+        </div>
+
+        <div class="lock">
+          <p><b>To open:</b> finish the title of your go-to karaoke song. 🎤</p>
+          <form class="quiz" id="quizFri" autocomplete="off">
+            <span>"Breaking</span>
+            <input placeholder="______" aria-label="Missing word">
+            <span>"</span>
+            <button class="btn rose" type="submit">Unlock</button>
+          </form>
+          <div class="hint"></div>
+        </div>
+
+        <div class="reveal">
+          <div class="stop">
+            <div class="ico">🍽️</div>
+            <div><b>Dinner</b><span data-fri-dinner></span><br><small data-fri-dinner-detail></small></div>
+          </div>
+          <div class="stop">
+            <div class="ico">🍸</div>
+            <div><b>Drinks</b><small>A cocktail (or two) to loosen up those hips.</small></div>
+          </div>
+          <div class="stop">
+            <div class="ico">💃</div>
+            <div>
+              <b>Salsa dancing</b>
+              <span data-fri-venue></span><br>
+              <small data-fri-detail></small>
+            </div>
+          </div>
+          <div class="stop">
+            <div class="ico">🕡</div>
+            <div><b data-fri-time></b><small>Dinner first, then Gulbar by 8:30 for salsa.</small></div>
+          </div>
+          <p class="note">Dress code: shoes you can spin in.<br>No experience required. I'm learning too.</p>
+          <button class="btn ghost cal" style="color:var(--ink);box-shadow:inset 0 0 0 2px #d8c8b0" data-ics="fri">📅 Add to calendar</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="finale" id="finale">
+      <div class="kitty">ฅ^•ﻌ•^ฅ</div>
+      <h2>It's a date. Two, actually.</h2>
+      <p class="muted">Can't wait. Let me know you made it to the end:</p>
+      <div class="btn-row" id="rsvpRow"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  /* ============ EDIT ME ============ */
+  const CONFIG = {
+    name: "Paige",
+    yourName: "",                  // optional: shows in the RSVP text
+    phone: "",                     // e.g. "+14035551234" — adds a "Text me" button at the end
+    wed: {
+      venue: "Ship & Anchor",
+      address: "534 17 Ave SW, Calgary",
+      detail: "A 17th Ave classic. Good drinks, better company.",
+      time: "Wed, Nov 11 · 7:00 pm",
+      start: "20261111T190000", end: "20261111T220000",
+    },
+    fri: {
+      dinner: "Somewhere delicious",
+      dinnerDetail: "Location classified until the night of. 🤫",
+      venue: "Gulbar",
+      address: "636 10 Ave SW, Calgary",
+      detail: "We need to be there by 8:30 pm. Live salsa band plays 9–11 pm.",
+      time: "Fri, Nov 13 · 6:30 pm",
+      start: "20261113T183000", end: "20261113T230000",
+    },
+  };
+  /* ================================= */
+
+  // Fill in the text from CONFIG
+  document.querySelectorAll("[data-name]").forEach(el => el.textContent = CONFIG.name);
+  const mapLink = (name, addr) =>
+    `<a href="https://maps.google.com/?q=${encodeURIComponent(name + ", " + addr)}" target="_blank" rel="noopener">${name}</a>`;
+  document.querySelector("[data-wed-venue]").innerHTML = "at " + mapLink(CONFIG.wed.venue, CONFIG.wed.address);
+  document.querySelector("[data-wed-detail]").textContent = CONFIG.wed.detail;
+  document.querySelector("[data-wed-time]").textContent = CONFIG.wed.time;
+  document.querySelector("[data-fri-dinner]").textContent = CONFIG.fri.dinner;
+  document.querySelector("[data-fri-dinner-detail]").textContent = CONFIG.fri.dinnerDetail;
+  document.querySelector("[data-fri-venue]").innerHTML = "at " + mapLink(CONFIG.fri.venue, CONFIG.fri.address);
+  document.querySelector("[data-fri-detail]").textContent = CONFIG.fri.detail;
+  document.querySelector("[data-fri-time]").textContent = CONFIG.fri.time;
+
+  // Background floaties
+  const glyphs = ["🎵", "🐾", "🎶", "✨", "🎷", "🐟"];
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement("span");
+    s.className = "floaty";
+    s.textContent = glyphs[i % glyphs.length];
+    s.style.left = Math.random() * 100 + "vw";
+    s.style.animationDuration = 14 + Math.random() * 16 + "s";
+    s.style.animationDelay = -Math.random() * 30 + "s";
+    document.body.appendChild(s);
+  }
+
+  // Scene switching
+  function go(id) {
+    document.querySelectorAll(".scene").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+
+  const boom = (opts = {}) => window.confetti && confetti({ particleCount: 120, spread: 80, origin: { y: .7 }, ...opts });
+
+  // The "No" button is shy for a few tries, then lets you click it for real
+  const noBtn = document.getElementById("noBtn");
+  const noMsg = document.getElementById("noMsg");
+  const noLines = ["Hmm, that button seems slippery.", "It really doesn't want to be pressed.", "Okay okay, one more try and it'll stay put."];
+  let dodges = 0;
+  function dodge(e) {
+    if (dodges >= noLines.length) return;
+    e.preventDefault();
+    const x = (Math.random() - .5) * 220, y = (Math.random() - .5) * 120;
+    noBtn.style.transform = `translate(${x}px, ${y}px)`;
+    noMsg.textContent = noLines[dodges++];
+  }
+  noBtn.addEventListener("mouseenter", dodge);
+  noBtn.addEventListener("touchstart", dodge, { passive: false });
+  noBtn.addEventListener("click", e => {
+    if (dodges < noLines.length) return dodge(e);
+    go("s-no");
+  });
+
+  document.getElementById("yesBtn").addEventListener("click", () => {
+    boom({ colors: ["#f2b84b", "#ff6f91", "#7fe0c5", "#ffffff"] });
+    setTimeout(() => go("s-dates"), 700);
+  });
+
+  // Open an envelope
+  let opened = 0;
+  function openEnv(id) {
+    const env = document.getElementById(id);
+    env.classList.add("open");
+    env.querySelector(".seal").textContent = "💌";
+    const r = env.getBoundingClientRect();
+    boom({ particleCount: 80, origin: { x: .5, y: Math.min(.9, (r.top + 60) / innerHeight) } });
+    if (++opened === 2) {
+      setTimeout(() => {
+        document.getElementById("finale").classList.add("show");
+        boom({ particleCount: 200, spread: 120 });
+      }, 900);
+    }
+  }
+
+  // Envelope locks: answer the question to open
+  function lock(formId, envId, answers, hints, success) {
+    const form = document.getElementById(formId);
+    const hint = form.nextElementSibling;
+    let misses = 0;
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const val = form.querySelector("input").value.toLowerCase().replace(/[^a-z]/g, "");
+      if (answers.includes(val)) {
+        hint.textContent = success;
+        openEnv(envId);
+      } else {
+        hint.textContent = hints[Math.min(misses++, hints.length - 1)];
+        form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+      }
+    });
+  }
+  lock("quizWed", "envWed", ["ryofukui", "fukuiryo", "fukui"],
+    ["Hmm, not them. Think Japanese jazz piano. 🎹", "Initials R.F.", "First name has three letters…"],
+    "🎶 Correct. Still on the hunt for that vinyl?");
+  lock("quizFri", "envFri", ["free"],
+    ["Not quite… think East High. 🏀", "Rhymes with 'tree'.", "Starts with F, ends with -ree. You've got this."],
+    "🎤 We're soarin'… okay I'll stop.");
+
+  // Calendar files
+  function ics(key) {
+    const d = CONFIG[key];
+    const title = key === "wed" ? `Drinks at ${d.venue}` : `Dinner + salsa at ${d.venue}`;
+    const body = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//date//EN",
+      "BEGIN:VEVENT",
+      `UID:${key}-${d.start}@date`,
+      `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
+      `DTSTART;TZID=America/Edmonton:${d.start}`,
+      `DTEND;TZID=America/Edmonton:${d.end}`,
+      `SUMMARY:${title}`,
+      `LOCATION:${d.venue}\\, ${d.address.replace(/,/g, "\\,")}`,
+      "END:VEVENT", "END:VCALENDAR",
+    ].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([body], { type: "text/calendar" }));
+    a.download = key === "wed" ? "wednesday-date.ics" : "friday-date.ics";
+    a.click();
+  }
+  document.querySelectorAll("[data-ics]").forEach(b => b.addEventListener("click", () => ics(b.dataset.ics)));
+
+  // RSVP
+  const rsvp = document.getElementById("rsvpRow");
+  if (CONFIG.phone) {
+    const msg = `I opened both envelopes. See you Wednesday${CONFIG.yourName ? ", " + CONFIG.yourName : ""} 💃`;
+    const a = document.createElement("a");
+    a.className = "btn rose";
+    a.style.textDecoration = "none";
+    a.href = `sms:${CONFIG.phone}?&body=${encodeURIComponent(msg)}`;
+    a.textContent = "Text me 💬";
+    rsvp.appendChild(a);
+  } else {
+    rsvp.innerHTML = `<p class="script" style="margin:0">Text me "Breaking Free" so I know 🎤</p>`;
+  }
+</script>
+</body>
+</html>
